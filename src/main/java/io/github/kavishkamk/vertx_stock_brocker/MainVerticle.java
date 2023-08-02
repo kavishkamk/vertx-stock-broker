@@ -1,6 +1,8 @@
 package io.github.kavishkamk.vertx_stock_brocker;
 
 import io.github.kavishkamk.vertx_stock_brocker.assets.AssetsRestApi;
+import io.github.kavishkamk.vertx_stock_brocker.assets.QuotesRestApi;
+import io.github.kavishkamk.vertx_stock_brocker.assets.WatchListRestApi;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -8,6 +10,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -30,9 +33,13 @@ public class MainVerticle extends AbstractVerticle {
 
     final Router restApi = Router.router(vertx);
 
-    restApi.route().failureHandler(routeFailerHandler());
+    restApi.route()
+      .handler(BodyHandler.create())
+      .failureHandler(routeFailerHandler());
 
     AssetsRestApi.attach(restApi);
+    QuotesRestApi.attach(restApi);
+    WatchListRestApi.attach(restApi);
 
     vertx.createHttpServer().requestHandler(restApi)
       .exceptionHandler(error -> System.err.println("Error: " + error.getCause()))
