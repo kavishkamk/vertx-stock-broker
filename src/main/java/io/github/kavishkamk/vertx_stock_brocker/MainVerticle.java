@@ -1,16 +1,9 @@
 package io.github.kavishkamk.vertx_stock_brocker;
 
-import io.github.kavishkamk.vertx_stock_brocker.assets.AssetsRestApi;
-import io.github.kavishkamk.vertx_stock_brocker.assets.QuotesRestApi;
-import io.github.kavishkamk.vertx_stock_brocker.assets.WatchListRestApi;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Handler;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -19,48 +12,29 @@ public class MainVerticle extends AbstractVerticle {
     vertx.exceptionHandler(error -> {
       System.err.println("error: " + error.getMessage());
     });
-    vertx.deployVerticle(new MainVerticle(), response -> {
-      if (response.failed()) {
-        System.err.println("error: " + response.cause());
-        return;
-      }
-      System.out.println("Deployment success");
-    });
+    vertx.deployVerticle(new MainVerticle())
+      .onFailure(error -> System.err.println("error: " + error))
+      .onSuccess(id -> {
+        System.out.println("Deployed " + MainVerticle.class.getName() + " with id " + id);
+      });
   }
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
-
-    final Router restApi = Router.router(vertx);
-
-    restApi.route()
-      .handler(BodyHandler.create())
-      .failureHandler(routeFailerHandler());
-
-    AssetsRestApi.attach(restApi);
-    QuotesRestApi.attach(restApi);
-    WatchListRestApi.attach(restApi);
-
-    vertx.createHttpServer().requestHandler(restApi)
-      .exceptionHandler(error -> System.err.println("Error: " + error.getCause()))
-      .listen(8888, http -> {
-      if (http.succeeded()) {
+    vertx.deployVerticle(RestApiVerticle.class.getName(),
+        new DeploymentOptions()
+          .setInstances(getAvailableProcessors())
+      )
+      .onFailure(startPromise::fail)
+      .onSuccess(id -> {
+        System.out.println("Deployed " + RestApiVerticle.class.getName() + " with id " + id);
         startPromise.complete();
-        System.out.println("HTTP server started on port 8888");
-      } else {
-        startPromise.fail(http.cause());
-      }
-    });
+      });
   }
 
-  private static Handler<RoutingContext> routeFailerHandler() {
-    return errorContext -> {
-      if (errorContext.response().ended()) {
-        return;
-      }
-      System.out.println("error: " + errorContext.failure());
-      errorContext.response().setStatusCode(500)
-        .end(new JsonObject().put("message", "Something went wrong").toBuffer());
-    };
+  private static int getAvailableProcessors() {
+    return Math.max(1, Runtime.getRuntime().availableProcessors());
   }
+
+
 }
