@@ -1,13 +1,11 @@
 package io.github.kavishkamk.vertx_stock_brocker;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 
 public class MainVerticle extends AbstractVerticle {
 
   public static void main(String[] args) {
+//    System.setProperty(ConfigLoader.SERVER_PORT, "9000");
     Vertx vertx = Vertx.vertx();
     vertx.exceptionHandler(error -> {
       System.err.println("error: " + error.getMessage());
@@ -21,7 +19,18 @@ public class MainVerticle extends AbstractVerticle {
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
-    vertx.deployVerticle(RestApiVerticle.class.getName(),
+    vertx.deployVerticle(VersionInfoVerticle.class.getName())
+      .onFailure(startPromise::fail)
+      .onSuccess(id -> {
+        System.out.println("Deployed " + VersionInfoVerticle.class.getName() + " with id " + id);
+      })
+      .compose(next ->
+        startRestApiVerticle(startPromise)
+      );
+  }
+
+  private Future<String> startRestApiVerticle(Promise<Void> startPromise) {
+    return vertx.deployVerticle(RestApiVerticle.class.getName(),
         new DeploymentOptions()
           .setInstances(getAvailableProcessors())
       )

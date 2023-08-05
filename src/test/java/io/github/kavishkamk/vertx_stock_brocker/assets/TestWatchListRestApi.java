@@ -1,6 +1,5 @@
 package io.github.kavishkamk.vertx_stock_brocker.assets;
 
-import io.github.kavishkamk.vertx_stock_brocker.MainVerticle;
 import io.github.kavishkamk.vertx_stock_brocker.domain.Asset;
 import io.github.kavishkamk.vertx_stock_brocker.domain.WatchList;
 import io.vertx.core.Future;
@@ -10,7 +9,6 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -20,16 +18,11 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(VertxExtension.class)
-public class TestWatchListRestApi {
-
-  @BeforeEach
-  void deploy_verticle(Vertx vertx, VertxTestContext testContext) {
-    vertx.deployVerticle(new MainVerticle(), testContext.succeeding(id -> testContext.completeNow()));
-  }
+public class TestWatchListRestApi extends AbstractRestApiTest {
 
   @Test
   void add_and_return_watch_list_for_account(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    WebClient webClient = WebClient.create(vertx, new WebClientOptions().setDefaultPort(8888));
+    WebClient webClient = WebClient.create(vertx, new WebClientOptions().setDefaultPort(TEST_SERVER_PORT));
     UUID accountId = UUID.randomUUID();
 
     webClient.put("/account/watchlist/" + accountId)
@@ -60,7 +53,7 @@ public class TestWatchListRestApi {
 
   @Test
   void add_and_delete_watch_list_for_account(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    WebClient webClient = WebClient.create(vertx, new WebClientOptions().setDefaultPort(8888));
+    WebClient webClient = WebClient.create(vertx, new WebClientOptions().setDefaultPort(TEST_SERVER_PORT));
     UUID accountId = UUID.randomUUID();
 
     webClient.put("/account/watchlist/" + accountId)
