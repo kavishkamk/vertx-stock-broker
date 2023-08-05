@@ -4,6 +4,11 @@ image:https://img.shields.io/badge/vert.x-4.4.4-purple.svg[link="https://vertx.i
 
 This application was generated using http://start.vertx.io
 
+== Start Postgres Instance
+```
+  docker run --name my-postgres -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=vertx_stock_broker -p 5432:5432 -d postgres:13.1-alpine
+```
+
 == Building
 
 To launch your tests:

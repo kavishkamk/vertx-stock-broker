@@ -13,9 +13,16 @@ import java.util.List;
 
 public class ConfigLoader {
 
+
   public static final String SERVER_PORT = "SERVER_PORT";
+  public static final String DB_HOST = "DB_HOST";
+  public static final String DB_PORT = "DB_PORT";
+  public static final String DB_DATABASE = "DB_DATABASE";
+  public static final String DB_USER = "DB_USER";
+  public static final String DB_PASSWORD = "DB_PASSWORD";
   public static final String APPLICATION_YAML = "application.yaml";
-  static final List<String> EXPOSED_ENVIRONMENT_VARIABLES = Arrays.asList(SERVER_PORT);
+  static final List<String> EXPOSED_ENVIRONMENT_VARIABLES = Arrays.asList(
+    SERVER_PORT, DB_PORT, DB_DATABASE, DB_HOST, DB_USER, DB_PASSWORD);
 
   public static Future<BrokerConfig> load(Vertx vertx) {
 

@@ -1,5 +1,7 @@
 package io.github.kavishkamk.vertx_stock_brocker;
 
+import io.github.kavishkamk.vertx_stock_brocker.config.ConfigLoader;
+import io.github.kavishkamk.vertx_stock_brocker.db.migration.FlywayMigration;
 import io.vertx.core.*;
 
 public class MainVerticle extends AbstractVerticle {
@@ -21,12 +23,22 @@ public class MainVerticle extends AbstractVerticle {
   public void start(Promise<Void> startPromise) throws Exception {
     vertx.deployVerticle(VersionInfoVerticle.class.getName())
       .onFailure(startPromise::fail)
-      .onSuccess(id -> {
-        System.out.println("Deployed " + VersionInfoVerticle.class.getName() + " with id " + id);
-      })
+      .onSuccess(id ->
+        System.out.println("Deployed " + VersionInfoVerticle.class.getName() + " with id " + id)
+      )
+      .compose(next -> migrateDatabase())
+      .onFailure(startPromise::fail)
+      .onSuccess(id ->
+        System.out.println("DB migration success with id: " + id)
+      )
       .compose(next ->
         startRestApiVerticle(startPromise)
       );
+  }
+
+  private Future<Void> migrateDatabase() {
+    return ConfigLoader.load(vertx)
+      .compose(config -> FlywayMigration.migrate(vertx, config.getDbConfig()));
   }
 
   private Future<String> startRestApiVerticle(Promise<Void> startPromise) {
