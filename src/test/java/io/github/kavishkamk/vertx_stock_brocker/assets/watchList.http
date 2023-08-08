@@ -1,0 +1,13 @@
+PUT http://localhost:8888/db/account/watchlist/100
+Content-Type: application/json
+
+{
+  "assets": [
+    {
+      "symbol": "AMZN"
+    },
+    {
+      "symbol": "TSLA"
+    }
+  ]
+}

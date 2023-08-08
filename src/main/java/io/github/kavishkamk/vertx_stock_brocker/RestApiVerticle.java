@@ -12,6 +12,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PoolOptions;
 
 public class RestApiVerticle extends AbstractVerticle {
 
@@ -28,15 +31,18 @@ public class RestApiVerticle extends AbstractVerticle {
 
   private void startRestApiAndAttachRoutes(Promise<Void> startPromise,
                                            BrokerConfig config) {
+
+    PgPool pgPool = getPgPool(config);
+
     final Router restApi = Router.router(vertx);
 
     restApi.route()
       .handler(BodyHandler.create())
       .failureHandler(routeFailerHandler());
 
-    AssetsRestApi.attach(restApi);
-    QuotesRestApi.attach(restApi);
-    WatchListRestApi.attach(restApi);
+    AssetsRestApi.attach(restApi, pgPool);
+    QuotesRestApi.attach(restApi, pgPool);
+    WatchListRestApi.attach(restApi, pgPool);
 
     vertx.createHttpServer().requestHandler(restApi)
       .exceptionHandler(error -> System.err.println("Error: " + error.getCause()))
@@ -48,6 +54,19 @@ public class RestApiVerticle extends AbstractVerticle {
           startPromise.fail(http.cause());
         }
       });
+  }
+
+  private PgPool getPgPool(BrokerConfig config) {
+    PgConnectOptions connectOptions = new PgConnectOptions()
+      .setHost(config.getDbConfig().getHost())
+      .setPort(config.getDbConfig().getPort())
+      .setDatabase(config.getDbConfig().getDatabase())
+      .setUser(config.getDbConfig().getUser())
+      .setPassword(config.getDbConfig().getPassword());
+
+    PoolOptions poolOptions = new PoolOptions().setMaxSize(4);
+
+    return PgPool.pool(vertx, connectOptions, poolOptions);
   }
 
   private static Handler<RoutingContext> routeFailerHandler() {
