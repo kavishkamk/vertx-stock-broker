@@ -1,6 +1,5 @@
 package io.github.kavishkamk.vertx_stock_brocker.routeHandlers;
 
-import io.github.kavishkamk.vertx_stock_brocker.assets.WatchListRestApi;
 import io.github.kavishkamk.vertx_stock_brocker.domain.WatchList;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -11,7 +10,10 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.templates.SqlTemplate;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class PutWatchListToDbHandler implements Handler<RoutingContext> {
 
@@ -28,14 +30,17 @@ public class PutWatchListToDbHandler implements Handler<RoutingContext> {
     JsonObject jsonObject = routingContext.body().asJsonObject();
     WatchList watchList = jsonObject.mapTo(WatchList.class);
 
-    watchList.getAssets().forEach(asset -> {
-      final HashMap<String, Object> parameters = new HashMap<>();
+    var parameterBatch = watchList.getAssets().stream().map(asset -> {
+      final Map<String, Object> parameters = new HashMap<>();
 
       parameters.put("account_id", accountId);
       parameters.put("asset", asset.getSymbol());
+      return parameters;
+    }).collect(Collectors.toList());
 
-      SqlTemplate.forUpdate(pool, "INSERT INTO broker.watchList VALUES(#{account_id}, #{asset})")
-        .execute(parameters)
+    pool.withTransaction(sqlConnection -> {
+      return SqlTemplate.forUpdate(sqlConnection, "DELETE FROM broker.watchList WHERE account_id=#{account_id}")
+        .execute(Collections.singletonMap("account_id", accountId))
         .onFailure(error -> {
           System.err.println("Error occurred: " + error.getCause());
           routingContext.response()
@@ -47,13 +52,40 @@ public class PutWatchListToDbHandler implements Handler<RoutingContext> {
               .toBuffer()
             );
         })
-        .onSuccess(result -> {
-          if(!routingContext.response().ended()) {
-            routingContext.response()
-              .setStatusCode(HttpResponseStatus.NO_CONTENT.code())
-              .end();
-          }
+        .compose(deletionDone -> {
+          return SqlTemplate.forUpdate(sqlConnection, "INSERT INTO broker.watchList VALUES(#{account_id}, #{asset})" +
+              " ON CONFLICT (account_id, asset) DO NOTHING")
+            .executeBatch(parameterBatch)
+            .onFailure(error -> {
+              System.err.println("Error occurred: " + error.getCause());
+              routingContext.response()
+                .setStatusCode(HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
+                .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+                .end(new JsonObject()
+                  .put("Error", "Unknown Error:  " + error)
+                  .put("path", routingContext.normalizedPath())
+                  .toBuffer()
+                );
+            })
+            .onFailure(error -> {
+              System.err.println("Error occurred: " + error.getCause());
+              routingContext.response()
+                .setStatusCode(HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
+                .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+                .end(new JsonObject()
+                  .put("Error", "Unknown Error:  " + error)
+                  .put("path", routingContext.normalizedPath())
+                  .toBuffer()
+                );
+            })
+            .onSuccess(result -> {
+              routingContext.response()
+                .setStatusCode(HttpResponseStatus.NO_CONTENT.code())
+                .end();
+            });
         });
     });
+
+
   }
 }

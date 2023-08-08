@@ -26,6 +26,8 @@ public class WatchListRestApi {
 
     router.put(pgPath).handler(new PutWatchListToDbHandler(pgPool));
 
+    router.delete(pgPath).handler(new DeleteWatchListFromDbHandler(pgPool));
+
   }
 
 }
